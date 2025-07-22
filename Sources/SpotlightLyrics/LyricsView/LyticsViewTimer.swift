@@ -9,6 +9,7 @@
 import UIKit
 
 
+@MainActor
 public class LyricsViewTimer {
     
     private let TICK_INTERVAL: TimeInterval = 0.1
@@ -40,6 +41,7 @@ public class LyricsViewTimer {
     
     public func seek(toTime time: TimeInterval) {
         eplasedTime = time
+
         lyricsView?.scroll(toTime: time, animated: true)
     }
     
@@ -50,3 +52,4 @@ public class LyricsViewTimer {
         seek(toTime: eplasedTime)
     }
 }
+

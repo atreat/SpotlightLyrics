@@ -8,6 +8,7 @@
 
 import UIKit
 
+@MainActor
 internal class LyricsCellViewModel {
     
     // MARK: Properties
@@ -90,3 +91,4 @@ internal class LyricsCellViewModel {
     
     internal weak var cell: LyricsCell? = nil
 }
+

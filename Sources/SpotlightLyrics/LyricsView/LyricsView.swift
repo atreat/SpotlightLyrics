@@ -142,7 +142,8 @@ open class LyricsView: UITableView, UITableViewDataSource, UITableViewDelegate {
     }
     
     // MARK: Controls
-    
+
+    @MainActor
     internal func scroll(toTime time: TimeInterval, animated: Bool) {
         guard let lyrics = parser?.lyrics else {
             return
