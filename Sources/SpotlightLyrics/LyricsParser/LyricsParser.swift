@@ -166,7 +166,10 @@ public class LyricsParser {
             items.append(LyricsItem(time: 0, text: line))
         }
 
-        items.forEach{ $0.text = cLine }
+        for i in 0..<items.count {
+            items[i].text = cLine
+        }
         return items
     }
 }
+
