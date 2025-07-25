@@ -2,8 +2,8 @@
 //  LyricItemView.swift
 //  SpotlightLyrics
 //
-//  Created by Scott Rong on 2017/7/28.
-//  Copyright © 2017 Scott Rong. All rights reserved.
+//  Created by Austin Emmons on 2017/7/28.
+//  Copyright © 2017 Austin Emmons. All rights reserved.
 //
 
 import SwiftUI
