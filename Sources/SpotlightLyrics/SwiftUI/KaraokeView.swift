@@ -17,23 +17,10 @@ public struct KaraokeView: View {
     @State private var focusedLyricIdx: Int? = nil
     @Binding private var currentTime: TimeInterval
     @Binding private var isPlaying: Bool
+    @State private var schedulerTask: Task<Void, Never>?
 
-    private let timer = Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()
     private let style: LyricItemStyle
     private let parser: LyricsParser
-
-    // MARK: - Public properties
-
-    public var currentLyric: String? {
-        guard let lastIndex = focusedLyricIdx else {
-            return nil
-        }
-        guard lastIndex < lyricsItems.count else {
-            return nil
-        }
-
-        return lyricsItems[lastIndex].text
-    }
 
     // MARK: - Initialization
 
@@ -62,18 +49,22 @@ public struct KaraokeView: View {
                     .listRowInsets(EdgeInsets())
                     .listRowSeparator(.hidden)
                 }
+//                .scrollTargetLayout()
             }
+//            .scrollPosition(id: $focusedLyricIdx, anchor: .center)
             .listStyle(PlainListStyle())
             .task {
                 reloadLyricsItems()
             }
-            .onReceive(timer) { _ in
-                if isPlaying {
-                    currentTime += 0.1
+            .onChange(of: isPlaying) { newValue in
+                if newValue {
+                    scheduleNextLyric(proxy: proxy)
+                } else {
+                    schedulerTask?.cancel()
                 }
             }
             .onChange(of: currentTime) { newValue in
-                scroll(toTime: newValue, proxy: proxy, animated: true)
+                scroll(toTime: newValue, proxy: proxy)
             }
         }
     }
@@ -86,20 +77,65 @@ public struct KaraokeView: View {
 
     // MARK: - Controls
 
-    @MainActor
-    internal func scroll(toTime time: TimeInterval, proxy: ScrollViewProxy, animated: Bool) {
-        guard !lyricsItems.isEmpty else {
-            withAnimation(animated ? .easeInOut(duration: 0.3) : nil) {
-                proxy.scrollTo(lyricsItems.indices.first, anchor: .center)
+    private func scheduleNextLyric(proxy: ScrollViewProxy) {
+        // Cancel any existing task
+        schedulerTask?.cancel()
+
+        guard !lyricsItems.isEmpty, isPlaying else { return }
+
+        if focusedLyricIdx == nil {
+            scroll(toIndex: 0, proxy: proxy)
+        }
+
+        print("LYRIC ITEMS FIRST 4: \(lyricsItems.prefix(4))")
+
+        // Find the next lyric based on current time
+        let nextIndex = lyricsItems.firstIndex(where: { $0.time > currentTime }) ?? lyricsItems.indices.last!
+        let nextLyric = lyricsItems[nextIndex]
+
+        schedulerTask = Task { @MainActor in
+            // Calculate wait time until next lyric
+            let waitTime = nextLyric.time - currentTime
+
+            if waitTime > 0 {
+                // Sleep until just before the next lyric (50ms buffer)
+                try? await Task.sleep(for: .seconds(max(0, waitTime - 0.1)))
+
+                // Check if we're still playing and task wasn't cancelled
+                if isPlaying && !Task.isCancelled {
+                    currentTime = nextLyric.time
+                    scroll(toIndex: nextIndex, proxy: proxy)
+
+                    // Schedule the next lyric if there is one
+                    if nextIndex < lyricsItems.count - 1 {
+                        scheduleNextLyric(proxy: proxy)
+                    }
+                }
             }
+        }
+    }
+
+    @MainActor
+    private func scroll(toIndex index: Int, proxy: ScrollViewProxy) {
+        focusedLyricIdx = index
+        withAnimation(.easeInOut(duration: 0.3)) {
+            proxy.scrollTo(index, anchor: .center)
+        }
+    }
+
+    @MainActor
+    internal func scroll(toTime time: TimeInterval, proxy: ScrollViewProxy) {
+        guard !lyricsItems.isEmpty else {
+            scroll(toIndex: 0, proxy: proxy)
             return
         }
 
-        let index = lyricsItems.index(where: { $0.time >= time }) ?? lyricsItems.indices.last!
-        focusedLyricIdx = index
+        let index = lyricsItems.firstIndex(where: { $0.time >= time }) ?? lyricsItems.indices.last!
+        scroll(toIndex: index, proxy: proxy)
 
-        withAnimation(animated ? .easeInOut(duration: 0.3) : nil) {
-            proxy.scrollTo(focusedLyricIdx, anchor: .center)
+        // If we're playing, schedule the next lyric
+        if isPlaying {
+            scheduleNextLyric(proxy: proxy)
         }
     }
 }

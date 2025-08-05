@@ -5,7 +5,7 @@ let package = Package(
     name: "SpotlightLyrics",
     platforms: [
         .macOS(.v13), // adjust as needed
-        .iOS(.v16)
+        .iOS(.v17)
     ],
     products: [
         .library(

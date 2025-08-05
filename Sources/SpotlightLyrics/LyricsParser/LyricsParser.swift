@@ -50,38 +50,6 @@ public class LyricsParser {
         // sort by time
         self.lyrics.sort{ $0.time < $1.time }
         
-        // parse header into lyrics
-        // insert header distribute by averge time intervals
-        if self.lyrics.count > 0 {
-            var headers: [String] = []
-            
-            if let title = header.title {
-                headers.append(title)
-            }
-            
-            if let author = header.author {
-                headers.append(author)
-            }
-            if let album = header.album {
-                headers.append(album)
-            }
-            if let by = header.by {
-                headers.append(by)
-            }
-            if let editor = header.editor {
-                headers.append(editor)
-            }
-            
-            let intervalPerHeader = self.lyrics[0].time / TimeInterval(headers.count)
-            
-            var headerLyrics: [LyricsItem] = headers.enumerated().map { LyricsItem(time: intervalPerHeader * TimeInterval($0.offset), text: $0.element) }
-            if (headerLyrics.count > 0) {
-                headerLyrics.append(LyricsItem(time: intervalPerHeader * TimeInterval(headerLyrics.count), text: ""))
-            }
-            
-            self.lyrics.insert(contentsOf: headerLyrics, at: 0)
-        }
-        
     }
     
     private func parseLine(line: String) {
