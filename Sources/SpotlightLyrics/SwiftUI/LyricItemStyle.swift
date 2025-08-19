@@ -18,8 +18,8 @@ public struct LyricItemStyle {
     public init(
         font: Font = .system(size: 16),
         highlightedFont: Font = .system(size: 16),
-        textColor: Color = .black,
-        highlightedTextColor: Color = .gray,
+        textColor: Color = .secondary,
+        highlightedTextColor: Color = .primary,
         lineSpacing: CGFloat = 16
     ) {
         self.font = font
