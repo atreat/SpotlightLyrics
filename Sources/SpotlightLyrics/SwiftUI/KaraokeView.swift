@@ -21,14 +21,22 @@ public struct KaraokeView: View {
 
     private let style: LyricItemStyle
     private let parser: LyricsParser
+    private let onTap: ((LyricsItem) -> Void)?
 
     // MARK: - Initialization
 
-    public init(parser: LyricsParser, currentTime: Binding<TimeInterval>, isPlaying: Binding<Bool>, style: LyricItemStyle = LyricItemStyle()) {
+    public init(
+        parser: LyricsParser,
+        currentTime: Binding<TimeInterval>,
+        isPlaying: Binding<Bool>,
+        style: LyricItemStyle = LyricItemStyle(),
+        onTap: ((LyricsItem) -> Void)? = nil
+    ) {
         self.parser = parser
         self._currentTime = currentTime
         self._isPlaying = isPlaying
         self.style = style
+        self.onTap = onTap
     }
 
     // MARK: - Body
@@ -36,32 +44,36 @@ public struct KaraokeView: View {
     public var body: some View {
         ScrollViewReader { proxy in
             List {
-                ForEach(Array(lyricsItems.enumerated()), id: \.offset) { index, item in
+                ForEach(Array(lyricsItems.enumerated()), id: \.element) { (idx, item) in
+                    let index = lyricsItems.firstIndex(of: item) ?? 0
+                    let distance = focusedLyricIdx.map { abs($0 - index) } ?? Int.max
+                    let isFocused = focusedLyricIdx == index
+                    let (opacity, blur) = styleFor(distance: distance, isFocused: isFocused)
+
                     LyricItemView(
                         item: item,
-                        highlighted: focusedLyricIdx == index,
+                        highlighted: isFocused,
                         font: style.font,
                         highlightedFont: style.highlightedFont,
                         textColor: style.textColor,
-                        highlightedTextColor: style.highlightedTextColor
+                        highlightedTextColor: style.highlightedTextColor,
+                        opacity: opacity,
+                        blurRadius: blur,
+                        onTap: { onTap?(item) }
                     )
                     .id(index)
                     .listRowInsets(EdgeInsets())
                     .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
                 }
-//                .scrollTargetLayout()
             }
-//            .scrollPosition(id: $focusedLyricIdx, anchor: .center)
-            .listStyle(PlainListStyle())
-            .task {
-                reloadLyricsItems()
-            }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden) // allow underlying gradient to show
+            .listRowBackground(Color.clear)
+            .background(Color.clear)
+            .task { reloadLyricsItems() }
             .onChange(of: isPlaying) { newValue in
-                if newValue {
-                    scheduleNextLyric(proxy: proxy)
-                } else {
-                    schedulerTask?.cancel()
-                }
+                if newValue { scheduleNextLyric(proxy: proxy) } else { schedulerTask?.cancel() }
             }
             .onChange(of: currentTime) { newValue in
                 scroll(toTime: newValue, proxy: proxy)
@@ -70,6 +82,13 @@ public struct KaraokeView: View {
     }
 
     // MARK: - Private methods
+
+    private func styleFor(distance: Int, isFocused: Bool) -> (opacity: Double, blur: CGFloat) {
+        if isFocused { return (1.0, 0) }
+        if distance == 1 { return (style.dimmedOpacity, style.nearbyBlurRadius) }
+        if distance <= style.maxBlurDistance { return (style.dimmedOpacity * 0.9, style.farBlurRadius) }
+        return (style.dimmedOpacity * 0.7, style.farBlurRadius)
+    }
 
     private func reloadLyricsItems() {
         lyricsItems = parser.lyrics

@@ -15,6 +15,9 @@ struct LyricItemView: View {
     let highlightedFont: Font
     let textColor: Color
     let highlightedTextColor: Color
+    var opacity: Double = 1.0
+    var blurRadius: CGFloat = 0
+    var onTap: (() -> Void)? = nil
 
     var body: some View {
         Text(item.text)
@@ -22,6 +25,10 @@ struct LyricItemView: View {
             .foregroundColor(highlighted ? highlightedTextColor : textColor)
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)
+            .opacity(opacity)
+            .blur(radius: blurRadius)
+            .contentShape(Rectangle())
+            .onTapGesture { onTap?() }
     }
 }
 
