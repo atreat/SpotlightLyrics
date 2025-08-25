@@ -21,6 +21,7 @@ public struct KaraokeView: View {
 
     private let style: LyricItemStyle
     private let parser: LyricsParser
+    private let focusEffectsEnabled: Bool
     private let onTap: ((LyricsItem) -> Void)?
 
     // MARK: - Initialization
@@ -30,12 +31,14 @@ public struct KaraokeView: View {
         currentTime: Binding<TimeInterval>,
         isPlaying: Binding<Bool>,
         style: LyricItemStyle = LyricItemStyle(),
+        focusEffectsEnabled: Bool = true,
         onTap: ((LyricsItem) -> Void)? = nil
     ) {
         self.parser = parser
         self._currentTime = currentTime
         self._isPlaying = isPlaying
         self.style = style
+        self.focusEffectsEnabled = focusEffectsEnabled
         self.onTap = onTap
     }
 
@@ -44,8 +47,8 @@ public struct KaraokeView: View {
     public var body: some View {
         ScrollViewReader { proxy in
             List {
-                ForEach(Array(lyricsItems.enumerated()), id: \.element) { (idx, item) in
-                    let index = lyricsItems.firstIndex(of: item) ?? 0
+                ForEach(lyricsItems.indices, id: \.self) { index in
+                    let item = lyricsItems[index]
                     let distance = focusedLyricIdx.map { abs($0 - index) } ?? Int.max
                     let isFocused = focusedLyricIdx == index
                     let (opacity, blur) = styleFor(distance: distance, isFocused: isFocused)
@@ -84,6 +87,8 @@ public struct KaraokeView: View {
     // MARK: - Private methods
 
     private func styleFor(distance: Int, isFocused: Bool) -> (opacity: Double, blur: CGFloat) {
+        // When focus effects are disabled (e.g., preview mode), render full opacity with no blur
+        if !focusEffectsEnabled || style.maxBlurDistance <= 0 { return (1.0, 0) }
         if isFocused { return (1.0, 0) }
         if distance == 1 { return (style.dimmedOpacity, style.nearbyBlurRadius) }
         if distance <= style.maxBlurDistance { return (style.dimmedOpacity * 0.9, style.farBlurRadius) }
@@ -105,8 +110,6 @@ public struct KaraokeView: View {
         if focusedLyricIdx == nil {
             scroll(toIndex: 0, proxy: proxy)
         }
-
-        print("LYRIC ITEMS FIRST 4: \(lyricsItems.prefix(4))")
 
         // Find the next lyric based on current time
         let nextIndex = lyricsItems.firstIndex(where: { $0.time > currentTime }) ?? lyricsItems.indices.last!
